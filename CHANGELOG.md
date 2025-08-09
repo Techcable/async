@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 * Bump MSRV to 1.61 (first time officially defined)
+* Unconditionally support 128-bit integers.
 * Setup Github Actions.
 * Fixup some minor typos in CHANGELOG.md, including an incorrect release date for 2.8.0.
 
