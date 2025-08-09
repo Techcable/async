@@ -6,8 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+* Update to Rust 2018. Does not affect compatibility with crates still using Rust 2015.
 * Bump MSRV to 1.61 (first time officially defined)
 * Unconditionally support 128-bit integers.
+* Fix all clippy warnings
 * Setup Github Actions.
 * Fixup some minor typos in CHANGELOG.md, including an incorrect release date for 2.8.0.
 

@@ -11,6 +11,7 @@ homepage = "https://github.com/slog-rs/slog"
 repository = "https://github.com/slog-rs/async"
 readme = "README.md"
 rust-version = "1.61"
+edition = "2021"
 
 [features]
 nested-values = ["slog/nested-values"]

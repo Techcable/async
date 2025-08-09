@@ -49,19 +49,24 @@
 
 // {{{ Imports & meta
 #![warn(missing_docs)]
-
-#[macro_use]
-extern crate slog;
-extern crate crossbeam_channel;
-extern crate take_mut;
-extern crate thread_local;
+#![warn(
+    rust_2018_idioms,
+    rust_2018_compatibility,
+    rust_2021_compatibility,
+    future_incompatible
+)]
+#![allow(
+    // covered by mismatched_lifetime_syntaxes
+    elided_lifetimes_in_paths,
+)]
 
 use crossbeam_channel::Sender;
 
+use slog::Drain;
+use slog::{b, o, record};
 use slog::{BorrowedKV, Level, Record, RecordStatic, SingleKV, KV};
 use slog::{Key, OwnedKVList, Serializer};
 
-use slog::Drain;
 use std::fmt;
 use std::sync;
 use std::{io, thread};
@@ -182,7 +187,7 @@ impl Serializer for ToSendSerializer {
     fn emit_serde(
         &mut self,
         key: Key,
-        value: &slog::SerdeValue,
+        value: &dyn slog::SerdeValue,
     ) -> slog::Result {
         let val = value.to_sendable();
         take(&mut self.kv, |kv| Box::new((kv, SingleKV(key, val))));
@@ -441,7 +446,7 @@ impl AsyncCore {
     ) -> Result<
         &crossbeam_channel::Sender<AsyncMsg>,
         std::sync::PoisonError<
-            sync::MutexGuard<crossbeam_channel::Sender<AsyncMsg>>,
+            sync::MutexGuard<'_, crossbeam_channel::Sender<AsyncMsg>>,
         >,
     > {
         self.tl_sender.get_or_try(|| Ok(self.ref_sender.clone()))
@@ -506,7 +511,7 @@ impl AsyncRecord {
     /// Writes the record to a `Drain`.
     pub fn log_to<D: Drain>(self, drain: &D) -> Result<D::Ok, D::Err> {
         let rs = RecordStatic {
-            location: &*self.location,
+            location: &self.location,
             level: self.level,
             tag: &self.tag,
         };
@@ -524,7 +529,7 @@ impl AsyncRecord {
     /// Deconstruct this `AsyncRecord` into a record and `OwnedKVList`.
     pub fn as_record_values(&self, mut f: impl FnMut(&Record, &OwnedKVList)) {
         let rs = RecordStatic {
-            location: &*self.location,
+            location: &self.location,
             level: self.level,
             tag: &self.tag,
         };
@@ -580,6 +585,7 @@ impl Drop for AsyncCore {
 ///
 /// More variants may be added in the future, without considering it a breaking change.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[non_exhaustive]
 pub enum OverflowStrategy {
     /// The message gets dropped and a message with number of dropped is produced once there's
     /// space.
@@ -593,8 +599,6 @@ pub enum OverflowStrategy {
     Drop,
     /// The caller is blocked until there's enough space.
     Block,
-    #[doc(hidden)]
-    DoNotMatchAgainstThisAndReadTheDocs,
 }
 
 /// `Async` builder
@@ -636,9 +640,6 @@ where
             OverflowStrategy::Block => (true, false),
             OverflowStrategy::Drop => (false, false),
             OverflowStrategy::DropAndReport => (false, true),
-            OverflowStrategy::DoNotMatchAgainstThisAndReadTheDocs => {
-                panic!("Invalid variant")
-            }
         };
         AsyncBuilder {
             core: self.core.blocking(block),
@@ -737,6 +738,7 @@ impl Async {
     /// The wrapped drain must handle all results (`Drain<Ok=(),Error=Never>`)
     /// since there's no way to return it back. See `slog::DrainExt::fuse()` and
     /// `slog::DrainExt::ignore_res()` for typical error handling strategies.
+    #[allow(clippy::new_ret_no_self)] // would break compat
     pub fn new<D: slog::Drain<Err = slog::Never, Ok = ()> + Send + 'static>(
         drain: D,
     ) -> AsyncBuilder<D> {
@@ -807,6 +809,7 @@ impl Drop for Async {
 #[cfg(test)]
 mod test {
     use super::*;
+    use slog::{info, warn};
     use std::sync::mpsc;
 
     #[test]
