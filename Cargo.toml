@@ -21,7 +21,7 @@ default = []
 path = "lib.rs"
 
 [dependencies]
-slog = "2.1"
+slog = { git = "https://github.com/Techcable/slog.git", branch = "feature/simple-flush-method" }
 thread_local = "1"
 take_mut = "0.2.0"
 crossbeam-channel = "0.5"
